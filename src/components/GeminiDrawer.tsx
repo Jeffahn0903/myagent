@@ -244,13 +244,23 @@ export default function GeminiDrawer({ open, onClose, onDataCreated }: GeminiDra
         </Typography>
         <Stack direction="row" spacing={0.8} sx={{ flexWrap: 'wrap', gap: 0.8 }}>
           <Chip
+            icon={<AutoAwesomeIcon fontSize="small" />}
+            label="📊 내 모든 정보 요약"
+            size="small"
+            color="primary"
+            variant="filled"
+            onClick={() => handlePresetClick('현재 내 계정에 등록된 모든 정보(일정, 프로젝트, 타스크, 고객/명함, AI 리포트)를 찾아 요약해서 알려줘')}
+            clickable
+            sx={{ fontSize: '0.75rem', height: 26, fontWeight: 700 }}
+          />
+          <Chip
             icon={<CalendarMonthIcon fontSize="small" />}
             label="내일 일정 알려줘"
             size="small"
             variant="outlined"
             onClick={() => handlePresetClick('내일 예정된 일정을 알려줘')}
             clickable
-            sx={{ fontSize: '0.75rem', height: 24 }}
+            sx={{ fontSize: '0.75rem', height: 26 }}
           />
           <Chip
             icon={<FolderIcon fontSize="small" />}
@@ -259,7 +269,17 @@ export default function GeminiDrawer({ open, onClose, onDataCreated }: GeminiDra
             variant="outlined"
             onClick={() => handlePresetClick('현재 진행 중인 프로젝트 현황을 요약해줘')}
             clickable
-            sx={{ fontSize: '0.75rem', height: 24 }}
+            sx={{ fontSize: '0.75rem', height: 26 }}
+          />
+          <Chip
+            icon={<TaskIcon fontSize="small" />}
+            label="등록된 고객/명함 조회"
+            size="small"
+            variant="outlined"
+            color="info"
+            onClick={() => handlePresetClick('등록된 모든 고객 및 명함 정보 목록을 보여줘')}
+            clickable
+            sx={{ fontSize: '0.75rem', height: 26 }}
           />
           <Chip
             icon={<TaskIcon fontSize="small" />}

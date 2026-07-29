@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    const [user, schedules, projects, tasks] = await Promise.all([
+    const [user, schedules, projects, tasks, customers, savedNews, reports, activityLogs] = await Promise.all([
       prisma.user.findUnique({ where: { id: userId } }),
       prisma.schedule.findMany({
         where: { userId },
@@ -110,6 +110,25 @@ export async function POST(request: Request) {
         orderBy: { createdAt: 'desc' },
         take: 50,
       }),
+      prisma.customer.findMany({
+        where: { userId },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.savedNews.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      prisma.report.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      prisma.activityLog.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
     ]);
 
     const nowIso = new Date().toISOString();
@@ -123,7 +142,7 @@ export async function POST(request: Request) {
     const schedulesSummary = schedules
       .map(
         (s) =>
-          `- [일정 ID: ${s.id}] 제목: "${s.title}", 일시: ${new Date(s.startTime).toLocaleString('ko-KR')} ~ ${new Date(s.endTime).toLocaleString('ko-KR')}, 장소: ${s.location || '미지정'}, 관련프로젝트: ${s.project?.name || '없음'}`
+          `- [일정 ID: ${s.id}] 제목: "${s.title}", 일시: ${new Date(s.startTime).toLocaleString('ko-KR')} ~ ${new Date(s.endTime).toLocaleString('ko-KR')}, 장소: ${s.location || '미지정'}, 관련프로젝트: ${s.project?.name || '없음'}, 고객: ${s.customer?.name || '없음'}`
       )
       .join('\n');
 
@@ -141,41 +160,64 @@ export async function POST(request: Request) {
       )
       .join('\n');
 
+    const customersSummary = customers
+      .map(
+        (c) =>
+          `- [고객 ID: ${c.id}] 이름: "${c.name}", 회사: "${c.company || '미지정'}", 직함: "${c.position || '미지정'}", 연락처: ${c.phone || '없음'}, 이메일: ${c.email || '없음'}`
+      )
+      .join('\n');
+
+    const savedNewsSummary = savedNews
+      .map((n) => `- 스크랩 제목: "${n.title}", 언론사: ${n.source || '미지정'}, URL: ${n.url}`)
+      .join('\n');
+
+    const reportsSummary = reports
+      .map((r) => `- [리포트 ID: ${r.id}] 유형: ${r.type}, 제목: "${r.title}", 작성일: ${new Date(r.createdAt).toLocaleDateString('ko-KR')}`)
+      .join('\n');
+
+    const activitySummary = activityLogs
+      .map((a) => `- [${new Date(a.createdAt).toLocaleString('ko-KR')}] [${a.action}] ${a.title}: ${a.details || ''}`)
+      .join('\n');
+
     const systemInstruction = `
 You are Gemini AI Workspace Assistant for MyAgent.
 Current Date: ${todayStr} (${nowIso}).
 User Name: ${user?.name || '사용자'}.
+User Email: ${user?.email || '알수없음'}.
+User Custom News Keywords: ${user?.newsKeywords || '미설정'}.
 
-[Workspace Context]
+[Complete User Account Workspace Context]
 ---
-1. PROJECTS:
+1. PROJECTS (${projects.length}개):
 ${projectsSummary || '등록된 프로젝트 없음'}
 
-2. SCHEDULES:
+2. SCHEDULES (${schedules.length}건):
 ${schedulesSummary || '등록된 일정 없음'}
 
-3. TASKS:
+3. TASKS (${tasks.length}건, 완료 ${tasks.filter(t => t.isCompleted).length}건, 진행중 ${tasks.filter(t => !t.isCompleted).length}건):
 ${tasksSummary || '등록된 타스크 없음'}
+
+4. CUSTOMERS & BUSINESS CARDS (${customers.length}명):
+${customersSummary || '등록된 고객/명함 정보 없음'}
+
+5. SAVED NEWS (${savedNews.length}건):
+${savedNewsSummary || '저장된 뉴스 없음'}
+
+6. GENERATED AI REPORTS (${reports.length}건):
+${reportsSummary || '생성된 AI 보고서 없음'}
+
+7. RECENT ACTIVITIES (${activityLogs.length}건):
+${activitySummary || '최근 활동 이력 없음'}
 ---
 
 [CRITICAL INTENT RULES]
-1. Q&A / INFORMATION QUERY (질문, 조회, 목록, 알려줘, 확인, 몇개있어):
-   - Strictly answer politely in Korean with filtered information.
-   - DO NOT PROPOSE OR GENERATE ANY CREATION ACTION BLOCK.
+1. Q&A / ACCOUNT OVERVIEW (계정 정보 조회, 전체 요약, 찾아줘, 확인, 몇개있어, 보여줘):
+   - Provide a complete, structured, highly polite breakdown in Korean of all requested data.
+   - When user asks "등록된 모든 정보 알려줘" or "계정 정보 요약해줘", present a neat overview of Projects, Schedules, Tasks, Customers, Saved News, and AI Reports.
+   - DO NOT PROPOSE OR GENERATE ANY CREATION ACTION BLOCK FOR QUERY PROMPTS.
 
 2. CREATION REQUEST (추가해줘, 생성해줘, 등록해줘, 만들어줘):
-   - ONLY when user explicitly asks to CREATE a new item, suggest a JSON action block.
-   - Example format at the end:
-   \`\`\`json
-   {
-     "action": "CREATE_SCHEDULE",
-     "data": {
-       "title": "일정 제목",
-       "startTime": "2026-07-22T15:00:00.000Z",
-       "endTime": "2026-07-22T16:00:00.000Z"
-     }
-   }
-   \`\`\`
+   - ONLY when user explicitly asks to CREATE a new item, suggest a JSON action block at the end of the text.
 `;
 
     let aiText = '';
