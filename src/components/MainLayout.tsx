@@ -215,6 +215,19 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 </Button>
                 <Button
                   component={Link}
+                  href="/dashboard/meetings"
+                  sx={{
+                    color: pathname.startsWith('/dashboard/meetings') ? '#3b82f6' : '#cbd5e1',
+                    fontWeight: pathname.startsWith('/dashboard/meetings') ? 700 : 500,
+                    borderBottom: pathname.startsWith('/dashboard/meetings') ? '2px solid #3b82f6' : '2px solid transparent',
+                    borderRadius: 0,
+                    px: 1.5,
+                  }}
+                >
+                  💬 회의실
+                </Button>
+                <Button
+                  component={Link}
                   href="/dashboard/news"
                   sx={{
                     color: pathname.startsWith('/dashboard/news') ? '#3b82f6' : '#cbd5e1',

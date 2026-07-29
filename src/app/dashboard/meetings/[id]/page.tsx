@@ -1,0 +1,437 @@
+'use client';
+
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter, useParams } from 'next/navigation';
+import {
+  Container,
+  Typography,
+  Box,
+  Button,
+  CircularProgress,
+  Alert,
+  Stack,
+  Chip,
+  Paper,
+  Divider,
+  Grid,
+  TextField,
+  IconButton,
+  Avatar,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Tooltip,
+} from '@mui/material';
+import SendIcon from '@mui/icons-material/Send';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import PublicIcon from '@mui/icons-material/Public';
+import LockIcon from '@mui/icons-material/Lock';
+import FolderIcon from '@mui/icons-material/Folder';
+import DownloadIcon from '@mui/icons-material/Download';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PersonIcon from '@mui/icons-material/Person';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+
+interface Attendee {
+  id: string;
+  name: string;
+  email: string;
+  role: 'HOST' | 'ATTENDEE' | 'GUEST';
+}
+
+interface Message {
+  id: string;
+  senderName: string;
+  senderEmail: string;
+  text: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  createdAt: string;
+}
+
+interface MeetingRoom {
+  id: string;
+  title: string;
+  description?: string | null;
+  date: string;
+  accessType: 'PUBLIC' | 'RESTRICTED';
+  allowedEmails?: string | null;
+  projectId?: string | null;
+  project?: {
+    id: string;
+    name: string;
+  } | null;
+  host: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  attendees: Attendee[];
+  messages: Message[];
+}
+
+export default function MeetingRoomChatPage() {
+  const { user, token, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const params = useParams();
+  const roomId = params?.id as string;
+
+  const [room, setRoom] = useState<MeetingRoom | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  // Chat Input State
+  const [inputMessage, setInputMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileSyncNotice, setFileSyncNotice] = useState('');
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchRoomDetails = useCallback(async () => {
+    if (!roomId) return;
+    try {
+      const res = await fetch(`/api/meetings/${roomId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || '회의실 접근 실패');
+      }
+
+      setRoom(data);
+      setMessages(data.messages || []);
+    } catch (err: any) {
+      setError(err?.message || '오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, [roomId, token]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    fetchRoomDetails();
+
+    // Poll messages every 3 seconds for live chat feel
+    const interval = setInterval(() => {
+      fetchRoomDetails();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [authLoading, fetchRoomDetails]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleCopyLink = () => {
+    const link = window.location.href;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSendMessage = async () => {
+    if ((!inputMessage.trim() && !selectedFile) || sending || !roomId) return;
+    setSending(true);
+    setError('');
+    setFileSyncNotice('');
+
+    try {
+      const formData = new FormData();
+      formData.append('text', inputMessage.trim());
+      if (user) {
+        formData.append('senderName', user.name || '사용자');
+        formData.append('senderEmail', user.email);
+      }
+      if (selectedFile) {
+        formData.append('file', selectedFile);
+      }
+
+      const res = await fetch(`/api/meetings/${roomId}/messages`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '메시지 전송 실패');
+
+      setInputMessage('');
+      setSelectedFile(null);
+
+      if (data.projectFileSynced && data.projectName) {
+        setFileSyncNotice(`📁 전송된 파일이 [${data.projectName}] 프로젝트 보관함에 자동 등록되었습니다!`);
+        setTimeout(() => setFileSyncNotice(''), 5000);
+      }
+
+      fetchRoomDetails();
+    } catch (err: any) {
+      setError(err?.message || '전송 중 오류가 발생했습니다.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Container maxWidth={false} sx={{ py: 8, textAlign: 'center' }}>
+        <CircularProgress />
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          온라인 회의실 연결 중...
+        </Typography>
+      </Container>
+    );
+  }
+
+  if (error || !room) {
+    return (
+      <Container maxWidth="md" sx={{ py: 8 }}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+          {error || '회의실을 찾을 수 없습니다.'}
+        </Alert>
+        <Button variant="contained" startIcon={<ArrowBackIcon />} onClick={() => router.push('/dashboard/meetings')}>
+          회의실 목록으로 돌아가기
+        </Button>
+      </Container>
+    );
+  }
+
+  const isPublic = room.accessType === 'PUBLIC';
+
+  return (
+    <Container maxWidth={false} sx={{ px: { xs: 2, md: 4 }, py: 3, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
+      {/* Top Bar Header */}
+      <Paper elevation={0} sx={{ p: 2, mb: 2, borderRadius: 2.5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <IconButton onClick={() => router.push('/dashboard/meetings')} size="small">
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h6" color="text.primary" sx={{ fontWeight: 800 }}>
+              {room.title}
+            </Typography>
+            <Chip
+              icon={isPublic ? <PublicIcon fontSize="small" /> : <LockIcon fontSize="small" />}
+              label={isPublic ? '🌐 공개' : '🔒 제한됨'}
+              size="small"
+              color={isPublic ? 'success' : 'warning'}
+              variant="outlined"
+            />
+            {room.project && (
+              <Chip
+                icon={<FolderIcon fontSize="small" />}
+                label={`📁 ${room.project.name}`}
+                size="small"
+                color="primary"
+                variant="filled"
+                sx={{ fontWeight: 700 }}
+              />
+            )}
+          </Stack>
+
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <CalendarMonthIcon fontSize="small" color="action" />
+              <Typography variant="caption" color="text.secondary">
+                {new Date(room.date).toLocaleString('ko-KR')}
+              </Typography>
+            </Box>
+            <Button variant="outlined" size="small" startIcon={<ContentCopyIcon />} onClick={handleCopyLink}>
+              {copied ? '링크 복사됨!' : '초대 링크 복사'}
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      {fileSyncNotice && (
+        <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mb: 2, borderRadius: 2 }}>
+          {fileSyncNotice}
+        </Alert>
+      )}
+
+      {/* Main Workspace Layout (Chat Area & Attendee Side Panel) */}
+      <Grid container spacing={2} sx={{ flexGrow: 1, minHeight: 0 }}>
+        {/* Left Side: Live Chatroom Area */}
+        <Grid size={{ xs: 12, md: 8, lg: 9 }} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2.5,
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              flexGrow: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              bgcolor: 'background.paper',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Messages Scroll Thread */}
+            <Box sx={{ flexGrow: 1, overflowY: 'auto', pr: 1, mb: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {messages.length === 0 ? (
+                <Box sx={{ py: 12, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    대화 내용이 없습니다. 첫 메시지나 프로젝트 파일을 공유해 보세요!
+                  </Typography>
+                </Box>
+              ) : (
+                messages.map((m) => {
+                  const isMe = user?.email === m.senderEmail;
+                  const isHostMsg = room.host.email === m.senderEmail;
+                  return (
+                    <Box key={m.id} sx={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', mb: 1 }}>
+                      <Box sx={{ maxWidth: '75%' }}>
+                        {!isMe && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.3, fontWeight: 700 }}>
+                            {m.senderName} {isHostMsg && <Chip label="방장" size="small" color="primary" sx={{ height: 18, fontSize: '0.6rem' }} />}
+                          </Typography>
+                        )}
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                            bgcolor: isMe ? 'primary.main' : (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#f1f5f9'),
+                            color: isMe ? '#ffffff' : 'text.primary',
+                          }}
+                        >
+                          {m.text && <Typography variant="body2" sx={{ whitespace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>{m.text}</Typography>}
+
+                          {m.fileUrl && (
+                            <Box sx={{ mt: m.text ? 1 : 0, pt: m.text ? 1 : 0, borderTop: m.text ? '1px solid rgba(255,255,255,0.2)' : 'none' }}>
+                              <Button
+                                size="small"
+                                variant={isMe ? 'contained' : 'outlined'}
+                                color={isMe ? 'secondary' : 'primary'}
+                                startIcon={<DownloadIcon />}
+                                component="a"
+                                href={m.fileUrl}
+                                target="_blank"
+                                download={m.fileName || 'file'}
+                                sx={{ textTransform: 'none', fontWeight: 700 }}
+                              >
+                                📎 {m.fileName || '첨부 파일 다운로드'}
+                              </Button>
+                            </Box>
+                          )}
+                        </Paper>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: isMe ? 'right' : 'left', mt: 0.3, fontSize: '0.65rem' }}>
+                          {new Date(m.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </Box>
+
+            {/* Selected File Badge */}
+            {selectedFile && (
+              <Box sx={{ mb: 1, p: 1, borderRadius: 2, bgcolor: 'action.selected', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                  📎 첨부 준비: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                </Typography>
+                <Button size="small" color="error" onClick={() => setSelectedFile(null)}>
+                  취소
+                </Button>
+              </Box>
+            )}
+
+            {/* Input Form Bar */}
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    setSelectedFile(e.target.files[0]);
+                  }
+                }}
+              />
+              <Tooltip title="파일 첨부 (프로젝트 보관함 자동 등록)">
+                <IconButton color="primary" onClick={() => fileInputRef.current?.click()}>
+                  <AttachFileIcon />
+                </IconButton>
+              </Tooltip>
+
+              <TextField
+                placeholder="메시지를 입력하거나 파일을 첨부해 전송하세요..."
+                fullWidth
+                size="small"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+              />
+
+              <Button
+                variant="contained"
+                color="primary"
+                endIcon={sending ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+                onClick={handleSendMessage}
+                disabled={sending || (!inputMessage.trim() && !selectedFile)}
+                sx={{ px: 2.5, fontWeight: 700 }}
+              >
+                전송
+              </Button>
+            </Stack>
+          </Paper>
+        </Grid>
+
+        {/* Right Side: Attendee List Panel */}
+        <Grid size={{ xs: 12, md: 4, lg: 3 }} sx={{ height: '100%' }}>
+          <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', height: '100%' }}>
+            <Typography variant="subtitle1" color="text.primary" sx={{ mb: 1.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
+              👥 참석자 리스트 ({room.attendees.length}명)
+            </Typography>
+            <Divider sx={{ mb: 1.5 }} />
+
+            <List disablePadding sx={{ overflowY: 'auto', maxHeight: 'calc(100% - 60px)' }}>
+              {room.attendees.map((att) => {
+                const isHost = att.role === 'HOST' || att.email === room.host.email;
+                return (
+                  <ListItem key={att.id} sx={{ px: 1, py: 0.8 }}>
+                    <ListItemAvatar sx={{ minWidth: 40 }}>
+                      <Avatar sx={{ width: 32, height: 32, bgcolor: isHost ? 'primary.main' : 'action.selected' }}>
+                        <PersonIcon fontSize="small" />
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                          {att.name} {isHost && <Chip label="방장" size="small" color="primary" sx={{ height: 18, fontSize: '0.6rem' }} />}
+                        </Typography>
+                      }
+                      secondary={
+                        <Typography variant="caption" color="text.secondary">
+                          {att.email}
+                        </Typography>
+                      }
+                    />
+                  </ListItem>
+                );
+              })}
+            </List>
+          </Paper>
+        </Grid>
+      </Grid>
+    </Container>
+  );
+}

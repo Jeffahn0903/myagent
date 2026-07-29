@@ -25,6 +25,7 @@ model User {
   reports            Report[]
   projectBudgets     ProjectBudget[]
   cashTransactions   CashTransaction[]
+  meetingRooms       MeetingRoom[]
   googleAccessToken  String?
   googleRefreshToken String?
   googleTokenExpiry  DateTime?
@@ -60,6 +61,7 @@ model Project {
   notes         ProjectNote[]
   files         ProjectFile[]
   budget        ProjectBudget?
+  meetingRooms  MeetingRoom[]
   startDate     DateTime?
   endDate       DateTime?
   createdAt     DateTime      @default(now())
@@ -206,5 +208,46 @@ model CashTransaction {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
+
+model MeetingRoom {
+  id            String            @id @default(cuid())
+  title         String
+  description   String?
+  date          DateTime          @default(now())
+  accessType    String            @default("PUBLIC") // "PUBLIC" | "RESTRICTED"
+  allowedEmails String?           // Comma-separated list of invited emails for RESTRICTED access
+  project       Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId     String?
+  host          User              @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  hostId        String
+  attendees     MeetingAttendee[]
+  messages      ChatMessage[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model MeetingAttendee {
+  id            String      @id @default(cuid())
+  name          String
+  email         String
+  role          String      @default("ATTENDEE") // "HOST" | "ATTENDEE" | "GUEST"
+  meetingRoom   MeetingRoom @relation(fields: [meetingRoomId], references: [id], onDelete: Cascade)
+  meetingRoomId String
+  joinedAt      DateTime    @default(now())
+}
+
+model ChatMessage {
+  id            String      @id @default(cuid())
+  senderName    String
+  senderEmail   String
+  text          String
+  fileUrl       String?
+  fileName      String?
+  mimeType      String?
+  meetingRoom   MeetingRoom @relation(fields: [meetingRoomId], references: [id], onDelete: Cascade)
+  meetingRoomId String
+  createdAt     DateTime    @default(now())
+}
+
 
 
