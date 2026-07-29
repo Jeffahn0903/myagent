@@ -1,0 +1,174 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  email              String        @unique
+  name               String?
+  password           String
+  newsKeywords       String?       @default("AI, 비즈니스, IT, 클라우드")
+  schedules          Schedule[]
+  tasks              Task[]
+  customers          Customer[]
+  projects           Project[]
+  savedNews          SavedNews[]
+  readNews           ReadNews[]
+  activityLogs       ActivityLog[]
+  reports            Report[]
+  googleAccessToken  String?
+  googleRefreshToken String?
+  googleTokenExpiry  DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model Customer {
+  id           String     @id @default(cuid())
+  name         String
+  email        String?
+  phone        String?
+  company      String?
+  position     String?
+  cardImageUrl String?
+  schedules    Schedule[]
+  user         User       @relation(fields: [userId], references: [id])
+  userId       String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Project {
+  id            String        @id @default(cuid())
+  name          String
+  description   String?
+  status        String        @default("ACTIVE")
+  driveFolderId String?
+  user          User          @relation(fields: [userId], references: [id])
+  userId        String
+  schedules     Schedule[]
+  tasks         Task[]
+  notes         ProjectNote[]
+  files         ProjectFile[]
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model ProjectNote {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectFile {
+  id          String    @id @default(cuid())
+  filename    String
+  fileUrl     String?
+  driveFileId String?
+  mimeType    String?
+  isRead      Boolean   @default(false)
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String?
+  schedule    Schedule? @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  scheduleId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Schedule {
+  id            String        @id @default(cuid())
+  title         String
+  content       String?
+  meetingNotes  String?
+  aiSummary     String?
+  attendees     String?
+  startTime     DateTime
+  endTime       DateTime
+  location      String?
+  googleEventId String?
+  user          User          @relation(fields: [userId], references: [id])
+  userId        String
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  customerId    String?
+  project       Project?      @relation(fields: [projectId], references: [id])
+  projectId     String?
+  tasks         Task[]
+  files         ProjectFile[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  isCompleted Boolean   @default(false)
+  dueDate     DateTime?
+  googleTaskId String?
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  schedule    Schedule? @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  scheduleId  String?
+  project     Project?  @relation(fields: [projectId], references: [id])
+  projectId   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model SavedNews {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  url         String
+  source      String?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  action     String   // "CREATE" | "UPDATE" | "DELETE"
+  entityType String   // "SCHEDULE" | "TASK" | "PROJECT" | "CUSTOMER" | "FILE" | "NOTE"
+  title      String
+  details    String?
+  targetUrl  String?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  createdAt  DateTime @default(now())
+}
+
+model ReadNews {
+  id        String   @id @default(cuid())
+  url       String
+  title     String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  type        String   // "DAILY" | "WEEKLY_RISK"
+  title       String
+  content     String
+  summaryData String?  // Optional JSON metadata for metrics
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
