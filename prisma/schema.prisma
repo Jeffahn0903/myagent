@@ -23,6 +23,8 @@ model User {
   readNews           ReadNews[]
   activityLogs       ActivityLog[]
   reports            Report[]
+  projectBudgets     ProjectBudget[]
+  cashTransactions   CashTransaction[]
   googleAccessToken  String?
   googleRefreshToken String?
   googleTokenExpiry  DateTime?
@@ -57,6 +59,7 @@ model Project {
   tasks         Task[]
   notes         ProjectNote[]
   files         ProjectFile[]
+  budget        ProjectBudget?
   startDate     DateTime?
   endDate       DateTime?
   createdAt     DateTime      @default(now())
@@ -171,4 +174,37 @@ model Report {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model ProjectBudget {
+  id              String            @id @default(cuid())
+  contractAmount  Float             @default(0) // 총 수주 금액 (Total Revenue / Contract Value)
+  targetBudget    Float             @default(0) // 목표 예산 (Target Budget)
+  notes           String?
+  project         Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId       String            @unique
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  transactions    CashTransaction[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model CashTransaction {
+  id              String        @id @default(cuid())
+  type            String        // "INCOME" (입금/매출) | "EXPENSE" (출금/비용)
+  category        String        // "선금", "중도금", "잔금", "외주비", "장비/서버비", "인건비", "기타"
+  title           String
+  amount          Float
+  dueDate         DateTime      // 입금/출금 예정일 (Scheduled Cash Flow Date)
+  actualDate      DateTime?     // 실제 입금/출금 완료일 (Completed Cash Flow Date)
+  status          String        @default("SCHEDULED") // "SCHEDULED" | "COMPLETED" | "OVERDUE"
+  notes           String?
+  projectBudget   ProjectBudget @relation(fields: [projectBudgetId], references: [id], onDelete: Cascade)
+  projectBudgetId String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
 
