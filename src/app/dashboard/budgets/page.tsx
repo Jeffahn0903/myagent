@@ -582,7 +582,7 @@ export default function BudgetsPage() {
                         </TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700, color: b.netProfitForecast >= 0 ? 'success.main' : 'error.main' }}>
                           {b.netProfitForecast.toLocaleString()} 원
-                          <Typography variant="caption" display="block" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                             ({b.profitMarginPct.toFixed(1)}%)
                           </Typography>
                         </TableCell>
