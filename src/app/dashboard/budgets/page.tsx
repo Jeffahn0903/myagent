@@ -879,7 +879,7 @@ export default function BudgetsPage() {
               type="date"
               fullWidth
               size="small"
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               value={txDueDate}
               onChange={(e) => setTxDueDate(e.target.value)}
             />
