@@ -10,8 +10,11 @@ import {
   Alert,
   Divider,
   CircularProgress,
+  Stack,
+  Chip,
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -28,11 +31,17 @@ function LoginFormContent() {
   let displayError = error;
   if (!displayError && queryError) {
     if (queryError === 'invalid_client') {
-      displayError = 'Google OAuth Client Secret 정보가 올바르지 않거나 Vercel 환경변수가 동기화되지 않았습니다. 아래 [admin / Jeff1732!] 계정으로 즉시 로그인하실 수 있습니다.';
+      displayError = 'Google OAuth 설정(Vercel 환경변수 또는 구글 콘솔) 동기화가 진행 중입니다. 아래 [⚡ 관리자 계정 1-Click 입력]을 눌러 즉시 로그인하실 수 있습니다.';
     } else {
-      displayError = `로그인 오류: ${queryError}`;
+      displayError = `로그인 처리 결과: ${queryError}`;
     }
   }
+
+  const handleFillAdmin = () => {
+    setEmail('admin');
+    setPassword('Jeff1732!');
+    setError('');
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -105,6 +114,18 @@ function LoginFormContent() {
                 {displayError}
               </Alert>
             )}
+
+            <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
+              <Chip
+                icon={<AdminPanelSettingsIcon style={{ fontSize: 16 }} />}
+                label="⚡ 관리자 계정(admin) 1-Click 자동 입력"
+                onClick={handleFillAdmin}
+                color="primary"
+                variant="outlined"
+                size="small"
+                sx={{ cursor: 'pointer', fontWeight: 700 }}
+              />
+            </Stack>
             
             <TextField
               margin="normal"
