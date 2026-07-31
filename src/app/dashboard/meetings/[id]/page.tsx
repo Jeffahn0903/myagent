@@ -124,10 +124,13 @@ export default function MeetingRoomChatPage() {
     createdAt: string;
   }>>([]);
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(0);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [diffResult, setDiffResult] = useState<string | null>(null);
 
   const fetchHistoryList = useCallback(async () => {
     if (!roomId) return;
     setHistoryLoading(true);
+    setDiffResult(null);
     try {
       const res = await fetch(`/api/meetings/${roomId}/history?t=${Date.now()}`);
       if (res.ok) {
@@ -141,6 +144,33 @@ export default function MeetingRoomChatPage() {
       setHistoryLoading(false);
     }
   }, [roomId]);
+
+  const handleCompareVersions = async (index: number) => {
+    if (index >= historyList.length - 1 || !roomId) return;
+    const currentItem = historyList[index];
+    const previousItem = historyList[index + 1];
+
+    setCompareLoading(true);
+    setDiffResult(null);
+    try {
+      const res = await fetch(`/api/meetings/${roomId}/compare-history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          historyIdA: previousItem.id,
+          historyIdB: currentItem.id,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDiffResult(data.diffSummary);
+      }
+    } catch (err) {
+      console.error('Compare error:', err);
+    } finally {
+      setCompareLoading(false);
+    }
+  };
 
   const handleOpenHistoryModal = () => {
     setOpenHistoryModal(true);
@@ -762,9 +792,35 @@ export default function MeetingRoomChatPage() {
                 {historyList[selectedHistoryIndex] && (
                   <Stack spacing={2}>
                     <Box>
-                      <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 800, mb: 1 }}>
-                        📌 AI 회의 요약본 (v{historyList[selectedHistoryIndex].version})
-                      </Typography>
+                      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 800 }}>
+                          📌 AI 회의 요약본 (v{historyList[selectedHistoryIndex].version})
+                        </Typography>
+                        {selectedHistoryIndex < historyList.length - 1 && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={compareLoading ? <CircularProgress size={14} /> : <AutoAwesomeIcon fontSize="small" />}
+                            onClick={() => handleCompareVersions(selectedHistoryIndex)}
+                            disabled={compareLoading}
+                            sx={{ fontWeight: 700, fontSize: '0.75rem' }}
+                          >
+                            🔍 이전 버전(v{historyList[selectedHistoryIndex + 1].version})과 변경점 비교
+                          </Button>
+                        )}
+                      </Stack>
+
+                      {diffResult && (
+                        <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: 'secondary.main', color: '#ffffff', borderRadius: 2, border: '1px solid', borderColor: 'primary.light' }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            🤖 Gemini AI 버전 변경사항 비교 분석 (v{historyList[selectedHistoryIndex + 1].version} ➡️ v{historyList[selectedHistoryIndex].version})
+                          </Typography>
+                          <Typography variant="body2" sx={{ whitespace: 'pre-wrap', lineHeight: 1.6 }}>
+                            {diffResult}
+                          </Typography>
+                        </Paper>
+                      )}
+
                       <Paper elevation={0} sx={{ p: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
                         <Typography variant="body2" sx={{ whitespace: 'pre-wrap', lineHeight: 1.7 }}>
                           {historyList[selectedHistoryIndex].summaryMarkdown}
