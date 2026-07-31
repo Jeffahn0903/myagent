@@ -263,12 +263,12 @@ export default function BudgetsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!token) {
+    if (!token && !user) {
       router.push('/login');
     } else {
       fetchBudgetData();
     }
-  }, [token, authLoading, router, fetchBudgetData]);
+  }, [token, user, authLoading, router, fetchBudgetData]);
 
   // Overall Financial Totals
   const totalContractVal = budgets.reduce((sum, b) => sum + b.contractAmount, 0);

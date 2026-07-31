@@ -25,12 +25,29 @@ export const getUserIdFromRequest = (request: Request | NextRequest | NextApiReq
     
     // 2. Check for token in query params for simple redirects
     if (!token && 'url' in request && request.url) {
-      const { searchParams } = new URL(request.url);
-      token = searchParams.get('token');
+      try {
+        const { searchParams } = new URL(request.url);
+        token = searchParams.get('token');
+      } catch (e) {}
+    }
+
+    // 3. Check for auth_token in Cookies
+    if (!token) {
+      if ('cookies' in request && typeof (request as any).cookies?.get === 'function') {
+        token = (request as any).cookies.get('auth_token')?.value || null;
+      }
+      if (!token && 'headers' in request && typeof (request.headers as Headers).get === 'function') {
+        const cookieHeader = (request.headers as Headers).get('cookie');
+        if (cookieHeader) {
+          const match = cookieHeader.match(/auth_token=([^;]+)/);
+          if (match) token = match[1];
+        }
+      }
     }
 
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as DecodedToken;
+      const secret = process.env.JWT_SECRET || 'fallback-secret-key-change-in-prod';
+      const decoded = jwt.verify(token, secret) as DecodedToken;
       return decoded.userId;
     }
 

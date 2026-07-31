@@ -165,12 +165,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!token) {
+    if (!token && !user) {
       router.push('/login');
       return;
     }
     fetchData();
-  }, [token, authLoading, router, fetchData]);
+  }, [token, user, authLoading, router, fetchData]);
 
   // Filter 2-Week Schedules (오늘 ~ 14일 뒤 이내 일정)
   const twoWeeksSchedules = useMemo(() => {

@@ -150,12 +150,12 @@ export default function MeetingsDashboardPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!token) {
+    if (!token && !user) {
       router.push('/login');
     } else {
       fetchRoomsAndProjects();
     }
-  }, [token, authLoading, router, fetchRoomsAndProjects]);
+  }, [token, user, authLoading, router, fetchRoomsAndProjects]);
 
   const handleOpenCreateModal = () => {
     setTitleInput('');

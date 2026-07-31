@@ -82,11 +82,12 @@ export async function GET(request: Request) {
       { expiresIn: '7d' }
     );
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (origin ? origin : request.url);
-    const redirectTarget = new URL(`/auth/callback?token=${token}`, baseUrl);
+    // Dynamic origin matching user's current request domain (mostlyon.com vs www.mostlyon.com vs localhost)
+    const currentOrigin = origin || request.url;
+    const redirectTarget = new URL(`/auth/callback?token=${token}`, currentOrigin);
 
     const response = NextResponse.redirect(redirectTarget);
-    const isProd = process.env.NODE_ENV === 'production' || baseUrl.startsWith('https://');
+    const isProd = process.env.NODE_ENV === 'production' || currentOrigin.startsWith('https://');
 
     response.cookies.set('auth_token', token, {
       httpOnly: true,
