@@ -23,6 +23,12 @@ import {
   ListItemAvatar,
   ListItemText,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
@@ -35,6 +41,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PersonIcon from '@mui/icons-material/Person';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 
 interface Attendee {
   id: string;
@@ -92,6 +100,71 @@ export default function MeetingRoomChatPage() {
   const [sending, setSending] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileSyncNotice, setFileSyncNotice] = useState('');
+
+  // AI Meeting Summarizer State
+  const [generatingAi, setGeneratingAi] = useState(false);
+  const [openSummaryModal, setOpenSummaryModal] = useState(false);
+  const [aiSummaryResult, setAiSummaryResult] = useState<{
+    summaryMarkdown: string;
+    suggestedSchedules: Array<{ title: string; startTime?: string; endTime?: string; location?: string; selected?: boolean }>;
+    suggestedTasks: Array<{ title: string; dueDate?: string; priority?: string; selected?: boolean }>;
+  } | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
+
+  const handleGenerateAiSummary = async () => {
+    if (!token || !roomId) return;
+    setGeneratingAi(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/meetings/${roomId}/ai-summary`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI 회의 요약 실패');
+
+      setAiSummaryResult({
+        summaryMarkdown: data.summaryMarkdown,
+        suggestedSchedules: (data.suggestedSchedules || []).map((s: any) => ({ ...s, selected: true })),
+        suggestedTasks: (data.suggestedTasks || []).map((t: any) => ({ ...t, selected: true })),
+      });
+      setOpenSummaryModal(true);
+    } catch (err: any) {
+      setError(err?.message || 'AI 요약 생성 중 오류가 발생했습니다.');
+    } finally {
+      setGeneratingAi(false);
+    }
+  };
+
+  const handleFinalizeMeeting = async () => {
+    if (!token || !roomId || !aiSummaryResult) return;
+    setFinalizing(true);
+    try {
+      const selectedSchedules = aiSummaryResult.suggestedSchedules.filter((s) => s.selected);
+      const selectedTasks = aiSummaryResult.suggestedTasks.filter((t) => t.selected);
+
+      const res = await fetch(`/api/meetings/${roomId}/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          summaryMarkdown: aiSummaryResult.summaryMarkdown,
+          schedules: selectedSchedules,
+          tasks: selectedTasks,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '회의록 확정 실패');
+
+      setFileSyncNotice(`✨ 회의록이 성공적으로 확정되었습니다! (일정 ${data.createdScheduleCount}건, 타스크 ${data.createdTaskCount}건 자동 등록 완료)`);
+      setOpenSummaryModal(false);
+      fetchRoomDetails();
+    } catch (err: any) {
+      setError(err?.message || '회의록 확정 중 오류가 발생했습니다.');
+    } finally {
+      setFinalizing(false);
+    }
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -246,6 +319,24 @@ export default function MeetingRoomChatPage() {
                 {new Date(room.date).toLocaleString('ko-KR')}
               </Typography>
             </Box>
+
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={generatingAi ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon />}
+              onClick={handleGenerateAiSummary}
+              disabled={generatingAi}
+              sx={{
+                fontWeight: 800,
+                background: 'linear-gradient(45deg, #7c3aed 30%, #3b82f6 90%)',
+                color: '#ffffff',
+                boxShadow: '0 3px 10px rgba(124, 58, 237, 0.4)',
+                '&:hover': { background: 'linear-gradient(45deg, #6d28d9 30%, #2563eb 90%)' },
+              }}
+            >
+              {generatingAi ? 'AI 분석 중...' : '🤖 AI 회의 요약 & 회의 종료'}
+            </Button>
+
             <Button variant="outlined" size="small" startIcon={<ContentCopyIcon />} onClick={handleCopyLink}>
               {copied ? '링크 복사됨!' : '초대 링크 복사'}
             </Button>
@@ -404,6 +495,27 @@ export default function MeetingRoomChatPage() {
             <Divider sx={{ mb: 1.5 }} />
 
             <List disablePadding sx={{ overflowY: 'auto', maxHeight: 'calc(100% - 60px)' }}>
+              {/* Virtual AI Agent Avatar */}
+              <ListItem sx={{ px: 1, py: 0.8, bgcolor: 'action.hover', borderRadius: 2, mb: 1 }}>
+                <ListItemAvatar sx={{ minWidth: 40 }}>
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: '#7c3aed' }}>
+                    <SmartToyIcon fontSize="small" />
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={
+                    <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      Gemini AI 회의 기록관 <Chip label="AI Agent" size="small" color="secondary" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 800 }} />
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography variant="caption" color="text.secondary">
+                      실시간 대화 및 첨부파일 기록 중
+                    </Typography>
+                  }
+                />
+              </ListItem>
+
               {room.attendees.map((att) => {
                 const isHost = att.role === 'HOST' || att.email === room.host.email;
                 return (
@@ -432,6 +544,125 @@ export default function MeetingRoomChatPage() {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Modal: AI Summary & Action Confirmation */}
+      <Dialog open={openSummaryModal} onClose={() => setOpenSummaryModal(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <SmartToyIcon color="primary" /> 🤖 Gemini AI 회의 요약 & 회의 종료 확정
+        </DialogTitle>
+        <DialogContent dividers>
+          {aiSummaryResult && (
+            <Stack spacing={3}>
+              {/* Meeting Summary Section */}
+              <Box>
+                <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 800, mb: 1 }}>
+                  📌 회의 핵심 요약 및 결정 사항 (Gemini 3.6 AI 작성)
+                </Typography>
+                <Paper elevation={0} sx={{ p: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                  <Typography variant="body2" sx={{ whitespace: 'pre-wrap', lineHeight: 1.7, color: 'text.primary' }}>
+                    {aiSummaryResult.summaryMarkdown}
+                  </Typography>
+                </Paper>
+              </Box>
+
+              {/* Extracted Schedules Section */}
+              <Box>
+                <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 800, mb: 1 }}>
+                  🗓️ 자동 추출된 후속 일정 ({aiSummaryResult.suggestedSchedules.length}건)
+                </Typography>
+                {aiSummaryResult.suggestedSchedules.length === 0 ? (
+                  <Typography variant="caption" color="text.secondary">
+                    추출된 후속 일정이 없습니다.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1}>
+                    {aiSummaryResult.suggestedSchedules.map((s, idx) => (
+                      <Paper key={idx} elevation={0} sx={{ p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={!!s.selected}
+                              onChange={(e) => {
+                                const next = [...aiSummaryResult.suggestedSchedules];
+                                next[idx].selected = e.target.checked;
+                                setAiSummaryResult({ ...aiSummaryResult, suggestedSchedules: next });
+                              }}
+                            />
+                          }
+                          label={
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                {s.title}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {s.startTime ? new Date(s.startTime).toLocaleString('ko-KR') : '일시 미정'} | 장소: {s.location || '온라인'}
+                              </Typography>
+                            </Box>
+                          }
+                        />
+                      </Paper>
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+
+              {/* Extracted Tasks Section */}
+              <Box>
+                <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 800, mb: 1 }}>
+                  ✅ 자동 추출된 후속 액션 아이템/타스크 ({aiSummaryResult.suggestedTasks.length}건)
+                </Typography>
+                {aiSummaryResult.suggestedTasks.length === 0 ? (
+                  <Typography variant="caption" color="text.secondary">
+                    추출된 후속 타스크가 없습니다.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1}>
+                    {aiSummaryResult.suggestedTasks.map((t, idx) => (
+                      <Paper key={idx} elevation={0} sx={{ p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={!!t.selected}
+                              onChange={(e) => {
+                                const next = [...aiSummaryResult.suggestedTasks];
+                                next[idx].selected = e.target.checked;
+                                setAiSummaryResult({ ...aiSummaryResult, suggestedTasks: next });
+                              }}
+                            />
+                          }
+                          label={
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                {t.title}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                마감일: {t.dueDate || '미정'} | 우선순위: {t.priority || 'MEDIUM'}
+                              </Typography>
+                            </Box>
+                          }
+                        />
+                      </Paper>
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
+          <Button onClick={() => setOpenSummaryModal(false)}>취소</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleFinalizeMeeting}
+            disabled={finalizing}
+            startIcon={finalizing ? <CircularProgress size={16} color="inherit" /> : <CheckCircleIcon />}
+            sx={{ fontWeight: 800, px: 3 }}
+          >
+            {finalizing ? '일정 및 타스크 등록 중...' : '✅ 회의록 확정 및 일정/타스크 일괄 등록'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
