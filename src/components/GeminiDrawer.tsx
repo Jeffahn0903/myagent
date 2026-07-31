@@ -227,7 +227,7 @@ export default function GeminiDrawer({ open, onClose, onDataCreated }: GeminiDra
               Gemini AI Assistant
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-              MyAgent 스마트 워크스페이스 비서
+              MostlyOn 스마트 워크스페이스 비서
             </Typography>
           </Box>
         </Stack>

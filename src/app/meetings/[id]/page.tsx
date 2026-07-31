@@ -176,8 +176,8 @@ export default function PublicMeetingRoomPage() {
 
   useEffect(() => {
     // Load saved guest info from localStorage
-    const savedName = localStorage.getItem('myagent_guest_name');
-    const savedEmail = localStorage.getItem('myagent_guest_email') || queryEmail;
+    const savedName = localStorage.getItem('mostlyon_guest_name');
+    const savedEmail = localStorage.getItem('mostlyon_guest_email') || queryEmail;
     if (savedName) setGuestName(savedName);
     if (savedEmail) setGuestEmail(savedEmail);
   }, [queryEmail]);
@@ -223,8 +223,8 @@ export default function PublicMeetingRoomPage() {
       setError('이름과 이메일을 모두 입력해 주세요.');
       return;
     }
-    localStorage.setItem('myagent_guest_name', guestName.trim());
-    localStorage.setItem('myagent_guest_email', guestEmail.trim());
+    localStorage.setItem('mostlyon_guest_name', guestName.trim());
+    localStorage.setItem('mostlyon_guest_email', guestEmail.trim());
     setGuestJoined(true);
     setOpenGuestModal(false);
     fetchRoomDetails();

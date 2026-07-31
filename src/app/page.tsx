@@ -22,7 +22,7 @@ export default function HomePage() {
         }}
       >
         <Typography variant="h2" component="h1" gutterBottom>
-          Welcome to MyAgent
+          Welcome to MostlyOn
         </Typography>
         <Typography variant="h5" color="text.secondary" gutterBottom>
           Your personal service for sales, management, and business correspondence.

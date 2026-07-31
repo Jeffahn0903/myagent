@@ -143,7 +143,7 @@ export async function POST(
         data: {
           meetingRoomId: id,
           senderName: 'Gemini AI 회의 기록관',
-          senderEmail: 'ai-agent@myagent.app',
+          senderEmail: 'ai-agent@mostlyon.app',
           text: systemNotice,
         },
       });

@@ -116,7 +116,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               sx={{ fontWeight: 800, letterSpacing: '-0.5px', mr: 1 }}
             >
               <Link href="/dashboard" style={{ textDecoration: 'none', color: '#3b82f6' }}>
-                MyAgent✨
+                MostlyOn✨
               </Link>
             </Typography>
 

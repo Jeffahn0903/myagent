@@ -180,7 +180,7 @@ export async function POST(request: Request) {
       .join('\n');
 
     const systemInstruction = `
-You are Gemini AI Workspace Assistant for MyAgent.
+You are Gemini AI Workspace Assistant for MostlyOn.
 Current Date: ${todayStr} (${nowIso}).
 User Name: ${user?.name || '사용자'}.
 User Email: ${user?.email || '알수없음'}.
