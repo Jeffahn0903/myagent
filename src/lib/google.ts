@@ -17,13 +17,9 @@ export const GOOGLE_FULL_SCOPES = [
 ];
 
 export const getGoogleOAuth2Client = (reqHost?: string) => {
-  const GOOGLE_CLIENT_ID = (
-    process.env.GOOGLE_CLIENT_ID ||
-    '715706294927-d8b9m73k88kq4qbekde0ojd45mplm3o1.apps.googleusercontent.com'
-  ).trim();
-
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID?.trim() || '';
   const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET?.trim() || '';
-  
+
   // Align with Vercel Primary Production Domain (www.mostlyon.com)
   let baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.mostlyon.com';
   if (reqHost) {
@@ -33,8 +29,8 @@ export const getGoogleOAuth2Client = (reqHost?: string) => {
 
   const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/auth/google/callback`;
 
-  if (!GOOGLE_CLIENT_SECRET) {
-    console.warn('Warning: GOOGLE_CLIENT_SECRET is missing in Vercel environment variables.');
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    console.error('CRITICAL: GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set in process.env!');
   }
 
   const oAuth2Client = new google.auth.OAuth2(
