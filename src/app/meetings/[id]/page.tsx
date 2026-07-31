@@ -122,7 +122,7 @@ export default function PublicMeetingRoomPage() {
     if (!roomId) return;
     setHistoryLoading(true);
     try {
-      const res = await fetch(`/api/meetings/${roomId}/history`);
+      const res = await fetch(`/api/meetings/${roomId}/history?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setHistoryList(data);

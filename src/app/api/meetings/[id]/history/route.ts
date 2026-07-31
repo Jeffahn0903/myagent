@@ -7,10 +7,35 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const historyList = await prisma.meetingSummaryHistory.findMany({
+    let historyList = await prisma.meetingSummaryHistory.findMany({
       where: { meetingRoomId: id },
       orderBy: { version: 'desc' },
     });
+
+    // Fallback: If no records in MeetingSummaryHistory, extract from AI system chat messages!
+    if (historyList.length === 0) {
+      const room = await prisma.meetingRoom.findUnique({ where: { id } });
+      const systemMsgs = await prisma.chatMessage.findMany({
+        where: {
+          meetingRoomId: id,
+          senderName: 'Gemini AI 회의 기록관',
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (systemMsgs.length > 0) {
+        historyList = systemMsgs.map((m, idx) => ({
+          id: m.id,
+          meetingRoomId: id,
+          title: room?.title || 'AI 회의 요약 내역',
+          summaryMarkdown: m.text,
+          schedulesJson: '[]',
+          tasksJson: '[]',
+          version: systemMsgs.length - idx,
+          createdAt: m.createdAt,
+        }));
+      }
+    }
 
     const formatted = historyList.map((h) => {
       let schedules: any[] = [];
