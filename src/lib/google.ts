@@ -24,7 +24,8 @@ export const getGoogleOAuth2Client = (reqHost?: string) => {
 
   const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET?.trim() || '';
   
-  let baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mostlyon.com';
+  // Align with Vercel Primary Production Domain (www.mostlyon.com)
+  let baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.mostlyon.com';
   if (reqHost) {
     const proto = reqHost.includes('localhost') ? 'http' : 'https';
     baseUrl = `${proto}://${reqHost}`;
