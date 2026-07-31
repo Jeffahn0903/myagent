@@ -45,6 +45,8 @@ export async function POST(
       })
       .join('\n');
 
+    const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
     const prompt = `
 You are an expert AI Executive Assistant & Meeting Minutes Analyst.
 Analyze the following online meeting transcript and extract structured meeting minutes, follow-up schedules, and follow-up tasks.
@@ -65,16 +67,16 @@ Please return JSON strictly adhering to the following JSON structure without mar
   "suggestedSchedules": [
     {
       "title": "Concise Schedule Title in Korean",
-      "startTime": "ISO 8601 Date String e.g. 2026-08-01T14:00:00",
-      "endTime": "ISO 8601 Date String e.g. 2026-08-01T15:00:00",
+      "startTime": "${tomorrowIso}T14:00:00.000Z",
+      "endTime": "${tomorrowIso}T15:00:00.000Z",
       "location": "Online or Offline location"
     }
   ],
   "suggestedTasks": [
     {
       "title": "Actionable task title in Korean",
-      "dueDate": "YYYY-MM-DD",
-      "priority": "HIGH or MEDIUM or LOW"
+      "dueDate": "${tomorrowIso}",
+      "priority": "HIGH"
     }
   ]
 }
@@ -121,7 +123,7 @@ Please return JSON strictly adhering to the following JSON structure without mar
         suggestedTasks: [
           {
             title: `${room.title} 회의 결과 검토 및 문서화`,
-            dueDate: new Date(Date.now() + 172800000).toISOString().split('T')[0],
+            dueDate: tomorrowIso,
             priority: 'HIGH',
           },
         ],
@@ -132,6 +134,41 @@ Please return JSON strictly adhering to the following JSON structure without mar
 
     try {
       const parsed = JSON.parse(rawText);
+      
+      // Sanitize schedules & tasks
+      if (Array.isArray(parsed.suggestedSchedules)) {
+        parsed.suggestedSchedules = parsed.suggestedSchedules.map((s: any) => {
+          let startTime = s.startTime;
+          if (!startTime || isNaN(new Date(startTime).getTime())) {
+            startTime = new Date(Date.now() + 86400000).toISOString();
+          }
+          let endTime = s.endTime;
+          if (!endTime || isNaN(new Date(endTime).getTime())) {
+            endTime = new Date(new Date(startTime).getTime() + 3600000).toISOString();
+          }
+          return {
+            title: s.title || '후속 일정',
+            startTime,
+            endTime,
+            location: s.location || '온라인',
+          };
+        });
+      }
+
+      if (Array.isArray(parsed.suggestedTasks)) {
+        parsed.suggestedTasks = parsed.suggestedTasks.map((t: any) => {
+          let dueDate = t.dueDate;
+          if (!dueDate || isNaN(new Date(dueDate).getTime())) {
+            dueDate = tomorrowIso;
+          }
+          return {
+            title: t.title || '후속 타스크',
+            dueDate,
+            priority: t.priority || 'MEDIUM',
+          };
+        });
+      }
+
       return NextResponse.json(parsed);
     } catch (e) {
       return NextResponse.json({
