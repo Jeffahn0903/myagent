@@ -76,9 +76,7 @@ export async function POST(
         await prisma.task.create({
           data: {
             title: `[회의 후속] ${t.title}`,
-            description: `회의 [${room.title}]에서 추출된 액션 아이템입니다.`,
-            priority: t.priority || 'MEDIUM',
-            status: 'TODO',
+            isCompleted: false,
             dueDate: due,
             userId: userId,
             projectId: room.projectId || undefined,
