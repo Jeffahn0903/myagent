@@ -113,6 +113,7 @@ export default function MeetingRoomChatPage() {
 
   // History Modal State
   const [openHistoryModal, setOpenHistoryModal] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [historyList, setHistoryList] = useState<Array<{
     id: string;
     title: string;
@@ -124,19 +125,26 @@ export default function MeetingRoomChatPage() {
   }>>([]);
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(0);
 
-  const handleOpenHistoryModal = async () => {
+  const fetchHistoryList = useCallback(async () => {
     if (!roomId) return;
+    setHistoryLoading(true);
     try {
       const res = await fetch(`/api/meetings/${roomId}/history`);
       if (res.ok) {
         const data = await res.json();
         setHistoryList(data);
         setSelectedHistoryIndex(0);
-        setOpenHistoryModal(true);
       }
     } catch (err) {
       console.error('Error fetching history:', err);
+    } finally {
+      setHistoryLoading(false);
     }
+  }, [roomId]);
+
+  const handleOpenHistoryModal = () => {
+    setOpenHistoryModal(true);
+    fetchHistoryList();
   };
 
   const handleGenerateAiSummary = async () => {
@@ -187,6 +195,7 @@ export default function MeetingRoomChatPage() {
       setFileSyncNotice(`✨ 회의록이 성공적으로 확정되었습니다! (일정 ${data.createdScheduleCount}건, 타스크 ${data.createdTaskCount}건 자동 등록 완료)`);
       setOpenSummaryModal(false);
       fetchRoomDetails();
+      fetchHistoryList();
     } catch (err: any) {
       setError(err?.message || '회의록 확정 중 오류가 발생했습니다.');
     } finally {
@@ -702,10 +711,17 @@ export default function MeetingRoomChatPage() {
           📜 회의록 히스토리 내역 ({historyList.length}건)
         </DialogTitle>
         <DialogContent dividers>
-          {historyList.length === 0 ? (
+          {historyLoading ? (
+            <Box sx={{ py: 6, textAlign: 'center' }}>
+              <CircularProgress size={32} />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+                회의록 히스토리를 불러오는 중...
+              </Typography>
+            </Box>
+          ) : historyList.length === 0 ? (
             <Box sx={{ py: 6, textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
-                저장된 past AI 회의록 히스토리가 없습니다. 상단 [🤖 AI 회의 요약 & 회의 종료]를 진행해 보세요.
+                저장된 AI 회의록 히스토리가 없습니다. 상단 [🤖 AI 회의 요약 & 회의 종료]를 진행해 보세요.
               </Typography>
             </Box>
           ) : (

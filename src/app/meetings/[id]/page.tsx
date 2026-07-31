@@ -104,6 +104,42 @@ export default function PublicMeetingRoomPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileSyncNotice, setFileSyncNotice] = useState('');
 
+  // History Modal State
+  const [openHistoryModal, setOpenHistoryModal] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyList, setHistoryList] = useState<Array<{
+    id: string;
+    title: string;
+    summaryMarkdown: string;
+    schedules: any[];
+    tasks: any[];
+    version: number;
+    createdAt: string;
+  }>>([]);
+  const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(0);
+
+  const fetchHistoryList = useCallback(async () => {
+    if (!roomId) return;
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/meetings/${roomId}/history`);
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryList(data);
+        setSelectedHistoryIndex(0);
+      }
+    } catch (err) {
+      console.error('Error fetching history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [roomId]);
+
+  const handleOpenHistoryModal = () => {
+    setOpenHistoryModal(true);
+    fetchHistoryList();
+  };
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -253,6 +289,9 @@ export default function PublicMeetingRoomPage() {
             </Stack>
 
             <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+              <Button variant="outlined" size="small" startIcon={<FolderIcon />} onClick={handleOpenHistoryModal} sx={{ fontWeight: 700 }}>
+                📜 회의록 히스토리
+              </Button>
               <Button variant="outlined" size="small" startIcon={<ContentCopyIcon />} onClick={handleCopyLink}>
                 {copied ? '초대 링크 복사됨!' : '🔗 외부 공유 링크 복사'}
               </Button>
@@ -528,6 +567,113 @@ export default function PublicMeetingRoomPage() {
           <Button variant="contained" onClick={handleGuestJoin} disabled={!guestName.trim() || !guestEmail.trim()} sx={{ fontWeight: 700 }}>
             회의실 입장
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal: AI Meeting Minutes History Viewer */}
+      <Dialog open={openHistoryModal} onClose={() => setOpenHistoryModal(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
+          📜 회의록 히스토리 내역 ({historyList.length}건)
+        </DialogTitle>
+        <DialogContent dividers>
+          {historyLoading ? (
+            <Box sx={{ py: 6, textAlign: 'center' }}>
+              <CircularProgress size={32} />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+                회의록 히스토리를 불러오는 중...
+              </Typography>
+            </Box>
+          ) : historyList.length === 0 ? (
+            <Box sx={{ py: 6, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                저장된 AI 회의록 히스토리가 없습니다. 방장이 [🤖 AI 회의 요약 & 회의 종료]를 실행하면 회의록이 자동 저장됩니다.
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={2}>
+              {/* Left Version Selector */}
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, mb: 1, display: 'block' }}>
+                  버전 목록 (최신순)
+                </Typography>
+                <Stack spacing={1}>
+                  {historyList.map((h, idx) => (
+                    <Paper
+                      key={h.id}
+                      elevation={0}
+                      onClick={() => setSelectedHistoryIndex(idx)}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        cursor: 'pointer',
+                        border: '1px solid',
+                        borderColor: selectedHistoryIndex === idx ? 'primary.main' : 'divider',
+                        bgcolor: selectedHistoryIndex === idx ? 'action.selected' : 'background.paper',
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: selectedHistoryIndex === idx ? 'primary.main' : 'text.primary' }}>
+                        버전 v{h.version}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.3 }}>
+                        {new Date(h.createdAt).toLocaleString('ko-KR')}
+                      </Typography>
+                    </Paper>
+                  ))}
+                </Stack>
+              </Grid>
+
+              {/* Right History Details */}
+              <Grid size={{ xs: 12, sm: 8 }}>
+                {historyList[selectedHistoryIndex] && (
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 800, mb: 1 }}>
+                        📌 AI 회의 요약본 (v{historyList[selectedHistoryIndex].version})
+                      </Typography>
+                      <Paper elevation={0} sx={{ p: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                        <Typography variant="body2" sx={{ whitespace: 'pre-wrap', lineHeight: 1.7 }}>
+                          {historyList[selectedHistoryIndex].summaryMarkdown}
+                        </Typography>
+                      </Paper>
+                    </Box>
+
+                    {historyList[selectedHistoryIndex].schedules.length > 0 && (
+                      <Box>
+                        <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 800, mb: 1 }}>
+                          🗓️ 생성된 일정 ({historyList[selectedHistoryIndex].schedules.length}건)
+                        </Typography>
+                        <Stack spacing={0.5}>
+                          {historyList[selectedHistoryIndex].schedules.map((s: any, i: number) => (
+                            <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              - {s.title} ({s.startTime ? new Date(s.startTime).toLocaleDateString('ko-KR') : ''})
+                            </Typography>
+                          ))}
+                        </Stack>
+                      </Box>
+                    )}
+
+                    {historyList[selectedHistoryIndex].tasks.length > 0 && (
+                      <Box>
+                        <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 800, mb: 1 }}>
+                          ✅ 생성된 타스크 ({historyList[selectedHistoryIndex].tasks.length}건)
+                        </Typography>
+                        <Stack spacing={0.5}>
+                          {historyList[selectedHistoryIndex].tasks.map((t: any, i: number) => (
+                            <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              - {t.title} (마감일: {t.dueDate || '미정'})
+                            </Typography>
+                          ))}
+                        </Stack>
+                      </Box>
+                    )}
+                  </Stack>
+                )}
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenHistoryModal(false)}>닫기</Button>
         </DialogActions>
       </Dialog>
     </Box>

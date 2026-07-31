@@ -12,11 +12,22 @@ export async function GET(
       orderBy: { version: 'desc' },
     });
 
-    const formatted = historyList.map((h) => ({
-      ...h,
-      schedules: h.schedulesJson ? JSON.parse(h.schedulesJson) : [],
-      tasks: h.tasksJson ? JSON.parse(h.tasksJson) : [],
-    }));
+    const formatted = historyList.map((h) => {
+      let schedules: any[] = [];
+      let tasks: any[] = [];
+      try {
+        if (h.schedulesJson) schedules = JSON.parse(h.schedulesJson);
+      } catch (e) {}
+      try {
+        if (h.tasksJson) tasks = JSON.parse(h.tasksJson);
+      } catch (e) {}
+
+      return {
+        ...h,
+        schedules,
+        tasks,
+      };
+    });
 
     return NextResponse.json(formatted);
   } catch (error: any) {
