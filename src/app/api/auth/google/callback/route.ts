@@ -82,10 +82,15 @@ export async function GET(request: Request) {
       { expiresIn: '7d' }
     );
 
-    const response = NextResponse.redirect(new URL('/dashboard', request.url));
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (origin ? origin : request.url);
+    const redirectTarget = new URL('/dashboard', baseUrl);
+
+    const response = NextResponse.redirect(redirectTarget);
+    const isProd = process.env.NODE_ENV === 'production' || baseUrl.startsWith('https://');
+
     response.cookies.set('auth_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_NODE_ENV === 'production',
+      secure: isProd,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: '/',
@@ -93,7 +98,8 @@ export async function GET(request: Request) {
 
     return response;
   } catch (error: any) {
-    console.error('Google OAuth callback error:', error);
-    return NextResponse.redirect(new URL('/login?error=google_callback_error', request.url));
+    console.error('Google OAuth callback error details:', error?.response?.data || error?.message || error);
+    const errMessage = error?.message || 'google_callback_error';
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(errMessage)}`, request.url));
   }
 }
