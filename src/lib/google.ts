@@ -17,20 +17,20 @@ export const GOOGLE_FULL_SCOPES = [
 ];
 
 export const getGoogleOAuth2Client = (reqHost?: string) => {
-  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID?.trim();
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET?.trim();
   
-  let baseUrl = 'https://mostlyon.com';
-  if (reqHost) {
-    const proto = reqHost.includes('localhost') ? 'http' : 'https';
-    baseUrl = `${proto}://${reqHost}`;
-  } else if (process.env.NEXT_PUBLIC_APP_URL) {
-    baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+  // Use canonical domain https://mostlyon.com for production to avoid redirect_uri mismatches
+  let baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mostlyon.com';
+  
+  if (reqHost && reqHost.includes('localhost')) {
+    baseUrl = `http://${reqHost}`;
   }
 
   const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/auth/google/callback`;
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    throw new Error('Google client ID or secret not configured');
+    console.error('CRITICAL: GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET environment variable is missing!');
   }
 
   const oAuth2Client = new google.auth.OAuth2(

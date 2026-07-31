@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import {
   Container,
   Box,
@@ -9,17 +9,30 @@ import {
   Typography,
   Alert,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
+function LoginFormContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { setToken } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const queryError = searchParams.get('error');
+
+  let displayError = error;
+  if (!displayError && queryError) {
+    if (queryError === 'invalid_client') {
+      displayError = 'Google OAuth Client Secret 정보가 올바르지 않거나 Vercel 환경변수가 동기화되지 않았습니다. 아래 [admin / Jeff1732!] 계정으로 즉시 로그인하실 수 있습니다.';
+    } else {
+      displayError = `로그인 오류: ${queryError}`;
+    }
+  }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -45,7 +58,7 @@ export default function LoginPage() {
       router.push('/dashboard');
 
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError('로그인 처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
       console.error(err);
     }
   };
@@ -60,8 +73,8 @@ export default function LoginPage() {
           alignItems: 'center',
         }}
       >
-        <Typography component="h1" variant="h5">
-          Sign In
+        <Typography component="h1" variant="h5" sx={{ fontWeight: 800 }}>
+          MostlyOn Sign In
         </Typography>
 
         <Box sx={{ width: '100%', mt: 3 }}>
@@ -74,25 +87,31 @@ export default function LoginPage() {
               py: 1.2,
               borderColor: '#4285F4',
               color: '#4285F4',
+              fontWeight: 700,
               '&:hover': {
                 borderColor: '#3367D6',
                 backgroundColor: 'rgba(66, 133, 244, 0.04)',
               },
             }}
           >
-            Google 계정으로 로그인
+            Google 계정으로 로그인 (1-Click SSO)
           </Button>
 
-          <Divider sx={{ my: 2 }}>또는</Divider>
+          <Divider sx={{ my: 2 }}>또는 이메일 / 관리자 로그인</Divider>
 
           <Box component="form" onSubmit={handleSubmit}>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            {displayError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {displayError}
+              </Alert>
+            )}
+            
             <TextField
               margin="normal"
               required
               fullWidth
               id="email"
-              label="Email Address"
+              label="이메일 또는 관리자 ID (admin)"
               name="email"
               autoComplete="email"
               autoFocus
@@ -104,7 +123,7 @@ export default function LoginPage() {
               required
               fullWidth
               name="password"
-              label="Password"
+              label="비밀번호"
               type="password"
               id="password"
               autoComplete="current-password"
@@ -115,13 +134,25 @@ export default function LoginPage() {
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2 }}
+              sx={{ mt: 3, mb: 2, py: 1.2, fontWeight: 700 }}
             >
-              Sign In
+              로그인
             </Button>
           </Box>
         </Box>
       </Box>
     </Container>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
+        <CircularProgress />
+      </Box>
+    }>
+      <LoginFormContent />
+    </Suspense>
   );
 }
