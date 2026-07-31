@@ -4,9 +4,11 @@ import jwt from 'jsonwebtoken';
 
 interface DecodedToken {
   userId: string;
+  email?: string;
+  name?: string;
 }
 
-export const getUserIdFromRequest = (request: Request | NextRequest | NextApiRequest): string | null => {
+export const getUserFromRequest = (request: Request | NextRequest | NextApiRequest): DecodedToken | null => {
   try {
     let token: string | null = null;
     
@@ -23,7 +25,7 @@ export const getUserIdFromRequest = (request: Request | NextRequest | NextApiReq
       token = authorization.substring(7);
     }
     
-    // 2. Check for token in query params for simple redirects
+    // 2. Check for token in query params
     if (!token && 'url' in request && request.url) {
       try {
         const { searchParams } = new URL(request.url);
@@ -48,7 +50,7 @@ export const getUserIdFromRequest = (request: Request | NextRequest | NextApiReq
     if (token) {
       const secret = process.env.JWT_SECRET || 'fallback-secret-key-change-in-prod';
       const decoded = jwt.verify(token, secret) as DecodedToken;
-      return decoded.userId;
+      return decoded;
     }
 
     return null;
@@ -56,4 +58,9 @@ export const getUserIdFromRequest = (request: Request | NextRequest | NextApiReq
     console.error('Error verifying token:', error);
     return null;
   }
+};
+
+export const getUserIdFromRequest = (request: Request | NextRequest | NextApiRequest): string | null => {
+  const decoded = getUserFromRequest(request);
+  return decoded ? decoded.userId : null;
 };
