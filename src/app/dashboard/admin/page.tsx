@@ -316,7 +316,7 @@ export default function AdminUsersDashboardPage() {
                     </TableCell>
 
                     <TableCell align="center">
-                      <Stack direction="row" spacing={1} justifyContent="center">
+                      <Stack direction="row" spacing={1} sx={{ justifyContent: 'center' }}>
                         <Chip label={`📁 프로젝트 ${u.stats.projectsCount}개`} size="small" variant="filled" color="primary" />
                         <Chip label={`🗓️ 일정 ${u.stats.schedulesCount}건`} size="small" variant="outlined" />
                         <Chip label={`✅ 타스크 ${u.stats.tasksCount}건`} size="small" variant="outlined" />
