@@ -74,7 +74,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // Issue JWT cookie and redirect to dashboard
+    // Issue JWT cookie and redirect to client-side callback handler
     const secret = process.env.JWT_SECRET || 'fallback-secret-key-change-in-prod';
     const token = jwt.sign(
       { userId: user.id, email: user.email, name: user.name },
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
     );
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (origin ? origin : request.url);
-    const redirectTarget = new URL('/dashboard', baseUrl);
+    const redirectTarget = new URL(`/auth/callback?token=${token}`, baseUrl);
 
     const response = NextResponse.redirect(redirectTarget);
     const isProd = process.env.NODE_ENV === 'production' || baseUrl.startsWith('https://');

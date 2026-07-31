@@ -24,16 +24,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUser = useCallback(async (authToken: string) => {
+  const fetchUser = useCallback(async (authToken?: string | null) => {
     try {
-      const res = await fetch('/api/me', {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      const headers: Record<string, string> = {};
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      const res = await fetch('/api/me', { headers });
       if (res.ok) {
         const userData = await res.json();
         setUser(userData);
       } else {
-        // Token is invalid, logout
         setTokenState(null);
         setUser(null);
         localStorage.removeItem('authToken');
@@ -49,7 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTokenState(storedToken);
       fetchUser(storedToken).finally(() => setLoading(false));
     } else {
-      setLoading(false);
+      // Fallback: check cookie auth via /api/me
+      fetchUser(null).finally(() => setLoading(false));
     }
   }, [fetchUser]);
 
