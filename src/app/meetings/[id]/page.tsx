@@ -39,6 +39,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import LoginIcon from '@mui/icons-material/Login';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 interface Attendee {
   id: string;
