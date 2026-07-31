@@ -115,7 +115,7 @@ function LoginFormContent() {
               </Alert>
             )}
 
-            <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
+            <Stack direction="row" sx={{ justifyContent: 'flex-end', mb: 1 }}>
               <Chip
                 icon={<AdminPanelSettingsIcon style={{ fontSize: 16 }} />}
                 label="⚡ 관리자 계정(admin) 1-Click 자동 입력"
