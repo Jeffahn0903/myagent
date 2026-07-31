@@ -14,11 +14,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'mostlyon.com';
     const proto = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-    const origin = host ? `${proto}://${host}` : undefined;
+    const currentOrigin = `${proto}://${host}`;
 
-    const oAuth2Client = getGoogleOAuth2Client(origin);
+    const oAuth2Client = getGoogleOAuth2Client(host);
     const { tokens } = await oAuth2Client.getToken(code);
     oAuth2Client.setCredentials(tokens);
 
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const { data: googleUser } = await oauth2.userinfo.get();
 
     if (!googleUser.email) {
-      return NextResponse.redirect(new URL('/login?error=no_email_from_google', request.url));
+      return NextResponse.redirect(new URL('/login?error=no_email_from_google', currentOrigin));
     }
 
     let user;
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
           googleTokenExpiry: expiry_date ? new Date(expiry_date) : null,
         },
       });
-      return NextResponse.redirect(new URL('/dashboard/settings?connected=true', request.url));
+      return NextResponse.redirect(new URL('/dashboard/settings?connected=true', currentOrigin));
     }
 
     // Find existing user by email or create new user (Public Registration via Google SSO)
@@ -82,8 +82,6 @@ export async function GET(request: Request) {
       { expiresIn: '7d' }
     );
 
-    // Dynamic origin matching user's current request domain (mostlyon.com vs www.mostlyon.com vs localhost)
-    const currentOrigin = origin || request.url;
     const redirectTarget = new URL(`/auth/callback?token=${token}`, currentOrigin);
 
     const response = NextResponse.redirect(redirectTarget);
@@ -101,6 +99,8 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error('Google OAuth callback error details:', error?.response?.data || error?.message || error);
     const errMessage = error?.message || 'google_callback_error';
-    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(errMessage)}`, request.url));
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'mostlyon.com';
+    const proto = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(errMessage)}`, `${proto}://${host}`));
   }
 }

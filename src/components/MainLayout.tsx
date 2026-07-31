@@ -254,6 +254,19 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 </Button>
                 <Button
                   component={Link}
+                  href="/dashboard/admin"
+                  sx={{
+                    color: pathname.startsWith('/dashboard/admin') ? '#f59e0b' : '#cbd5e1',
+                    fontWeight: pathname.startsWith('/dashboard/admin') ? 700 : 500,
+                    borderBottom: pathname.startsWith('/dashboard/admin') ? '2px solid #f59e0b' : '2px solid transparent',
+                    borderRadius: 0,
+                    px: 1.5,
+                  }}
+                >
+                  🔑 관리자
+                </Button>
+                <Button
+                  component={Link}
                   href="/dashboard/history"
                   sx={{
                     color: pathname.startsWith('/dashboard/history') ? '#3b82f6' : '#cbd5e1',

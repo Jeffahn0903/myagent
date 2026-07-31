@@ -16,10 +16,17 @@ export const GOOGLE_FULL_SCOPES = [
   'https://www.googleapis.com/auth/tasks',
 ];
 
-export const getGoogleOAuth2Client = (reqOrigin?: string) => {
+export const getGoogleOAuth2Client = (reqHost?: string) => {
   const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
-  // Always prefer NEXT_PUBLIC_APP_URL for strict canonical OAuth redirectUri consistency
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || reqOrigin || 'http://localhost:3000';
+  
+  let baseUrl = 'https://mostlyon.com';
+  if (reqHost) {
+    const proto = reqHost.includes('localhost') ? 'http' : 'https';
+    baseUrl = `${proto}://${reqHost}`;
+  } else if (process.env.NEXT_PUBLIC_APP_URL) {
+    baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+  }
+
   const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/auth/google/callback`;
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
