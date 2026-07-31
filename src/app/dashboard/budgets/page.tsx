@@ -203,6 +203,40 @@ export default function BudgetsPage() {
   const [txNotes, setTxNotes] = useState('');
   const [savingTx, setSavingTx] = useState(false);
 
+  // Quick Project Creation State
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [creatingProjectLoading, setCreatingProjectLoading] = useState(false);
+
+  const handleQuickCreateProject = async () => {
+    if (!token || !newProjectName.trim()) return;
+    setCreatingProjectLoading(true);
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newProjectName.trim(),
+          description: '자금/예산 설정 중 생성된 프로젝트',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.id) {
+        setNewProjectName('');
+        setIsCreatingProject(false);
+        fetchBudgetData();
+        setSelectedProjectId(data.id);
+      }
+    } catch (err) {
+      console.error('Quick project creation error:', err);
+    } finally {
+      setCreatingProjectLoading(false);
+    }
+  };
+
   const fetchBudgetData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
@@ -770,16 +804,61 @@ export default function BudgetsPage() {
         <DialogTitle sx={{ fontWeight: 800 }}>💰 프로젝트 수주금액 & 비용 예산 설정</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>프로젝트 선택</InputLabel>
-              <Select value={selectedProjectId} label="프로젝트 선택" onChange={(e) => setSelectedProjectId(e.target.value)}>
-                {budgets.map((b) => (
-                  <MenuItem key={b.projectId} value={b.projectId}>
-                    {b.projectName}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>프로젝트 선택</InputLabel>
+                  <Select value={selectedProjectId} label="프로젝트 선택" onChange={(e) => setSelectedProjectId(e.target.value)}>
+                    {budgets.map((b) => (
+                      <MenuItem key={b.projectId} value={b.projectId}>
+                        {b.projectName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => setIsCreatingProject(!isCreatingProject)}
+                  sx={{ whiteSpace: 'nowrap', height: 40, fontWeight: 700 }}
+                >
+                  새 프로젝트
+                </Button>
+              </Stack>
+
+              {isCreatingProject && (
+                <Paper elevation={0} sx={{ p: 1.5, border: '1px dashed', borderColor: 'primary.main', borderRadius: 2, bgcolor: 'action.hover' }}>
+                  <Typography variant="caption" color="primary.main" sx={{ fontWeight: 700, display: 'block', mb: 1 }}>
+                    ✨ 신규 프로젝트 인라인 즉시 생성
+                  </Typography>
+                  <Stack direction="row" spacing={1}>
+                    <TextField
+                      placeholder="새 프로젝트명을 입력하세요 (예: 플립비)"
+                      size="small"
+                      fullWidth
+                      value={newProjectName}
+                      onChange={(e) => setNewProjectName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleQuickCreateProject();
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={handleQuickCreateProject}
+                      disabled={creatingProjectLoading || !newProjectName.trim()}
+                      sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}
+                    >
+                      {creatingProjectLoading ? '생성 중...' : '생성'}
+                    </Button>
+                  </Stack>
+                </Paper>
+              )}
+            </Box>
 
             <TextField
               label="총 수주 계약금액 (매출 원)"

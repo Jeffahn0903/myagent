@@ -83,6 +83,40 @@ export default function MeetingsDashboardPage() {
   const [allowedEmailsInput, setAllowedEmailsInput] = useState('');
   const [creating, setCreating] = useState(false);
 
+  // Quick Project Creation State
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [creatingProjectLoading, setCreatingProjectLoading] = useState(false);
+
+  const handleQuickCreateProject = async () => {
+    if (!token || !newProjectName.trim()) return;
+    setCreatingProjectLoading(true);
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newProjectName.trim(),
+          description: '회의실 개설 중 생성된 프로젝트',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.id) {
+        setProjects((prev) => [data, ...prev]);
+        setSelectedProjectId(data.id);
+        setNewProjectName('');
+        setIsCreatingProject(false);
+      }
+    } catch (err) {
+      console.error('Quick project creation error:', err);
+    } finally {
+      setCreatingProjectLoading(false);
+    }
+  };
+
   // Invite Modal State
   const [openInviteModal, setOpenInviteModal] = useState(false);
   const [inviteRoomId, setInviteRoomId] = useState('');
@@ -386,17 +420,62 @@ export default function MeetingsDashboardPage() {
               onChange={(e) => setDateInput(e.target.value)}
             />
 
-            <FormControl fullWidth size="small">
-              <InputLabel>연동 프로젝트 선택</InputLabel>
-              <Select value={selectedProjectId} label="연동 프로젝트 선택" onChange={(e) => setSelectedProjectId(e.target.value)}>
-                <MenuItem value="">연동 안 함 (일반 회의실)</MenuItem>
-                {projects.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>연동 프로젝트 선택</InputLabel>
+                  <Select value={selectedProjectId} label="연동 프로젝트 선택" onChange={(e) => setSelectedProjectId(e.target.value)}>
+                    <MenuItem value="">연동 안 함 (일반 회의실)</MenuItem>
+                    {projects.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>
+                        {p.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => setIsCreatingProject(!isCreatingProject)}
+                  sx={{ whiteSpace: 'nowrap', height: 40, fontWeight: 700 }}
+                >
+                  새 프로젝트
+                </Button>
+              </Stack>
+
+              {isCreatingProject && (
+                <Paper elevation={0} sx={{ p: 1.5, border: '1px dashed', borderColor: 'primary.main', borderRadius: 2, bgcolor: 'action.hover' }}>
+                  <Typography variant="caption" color="primary.main" sx={{ fontWeight: 700, display: 'block', mb: 1 }}>
+                    ✨ 신규 프로젝트 인라인 즉시 생성
+                  </Typography>
+                  <Stack direction="row" spacing={1}>
+                    <TextField
+                      placeholder="새 프로젝트명을 입력하세요 (예: 플립비)"
+                      size="small"
+                      fullWidth
+                      value={newProjectName}
+                      onChange={(e) => setNewProjectName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleQuickCreateProject();
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={handleQuickCreateProject}
+                      disabled={creatingProjectLoading || !newProjectName.trim()}
+                      sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}
+                    >
+                      {creatingProjectLoading ? '생성 중...' : '생성'}
+                    </Button>
+                  </Stack>
+                </Paper>
+              )}
+            </Box>
 
             <FormControl fullWidth size="small">
               <InputLabel>공개 및 접근 권한 설정 (Drive 스타일)</InputLabel>
