@@ -17,14 +17,13 @@ export const GOOGLE_FULL_SCOPES = [
 ];
 
 export const getGoogleOAuth2Client = (reqHost?: string) => {
-  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID?.trim();
-  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID?.trim() || '';
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET?.trim() || '';
   
-  // Use canonical domain https://mostlyon.com for production to avoid redirect_uri mismatches
   let baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mostlyon.com';
-  
-  if (reqHost && reqHost.includes('localhost')) {
-    baseUrl = `http://${reqHost}`;
+  if (reqHost) {
+    const proto = reqHost.includes('localhost') ? 'http' : 'https';
+    baseUrl = `${proto}://${reqHost}`;
   }
 
   const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/auth/google/callback`;
