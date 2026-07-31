@@ -30,7 +30,7 @@ export async function POST(
     const userId = getUserIdFromRequest(request);
 
     let senderName = '참석자';
-    let senderEmail = 'guest@mostlyon.app';
+    let senderEmail = 'guest@mostlyon.com';
 
     if (userId) {
       const user = await prisma.user.findUnique({ where: { id: userId } });
