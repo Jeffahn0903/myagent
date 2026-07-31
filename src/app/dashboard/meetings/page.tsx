@@ -208,7 +208,7 @@ export default function MeetingsDashboardPage() {
 
   const handleCopyLink = (roomId: string, accessType: string) => {
     const baseUrl = window.location.origin;
-    const link = `${baseUrl}/dashboard/meetings/${roomId}`;
+    const link = `${baseUrl}/meetings/${roomId}`;
     navigator.clipboard.writeText(link);
     setCopiedId(roomId);
     setTimeout(() => setCopiedId(''), 2000);

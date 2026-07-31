@@ -54,10 +54,14 @@ export async function POST(
       });
     }
 
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+    const proto = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+
     return NextResponse.json({
       success: true,
       allowedEmails: updated.allowedEmails,
-      inviteLink: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/meetings/${id}?email=${encodeURIComponent(email)}`,
+      inviteLink: `${baseUrl}/meetings/${id}?email=${encodeURIComponent(email)}`,
     });
   } catch (error: any) {
     console.error('Error inviting email to meeting:', error);

@@ -207,7 +207,7 @@ export default function MeetingRoomChatPage() {
   }, [messages]);
 
   const handleCopyLink = () => {
-    const link = window.location.href;
+    const link = `${window.location.origin}/meetings/${roomId}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
