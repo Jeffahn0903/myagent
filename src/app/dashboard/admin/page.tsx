@@ -127,7 +127,7 @@ export default function AdminUsersDashboardPage() {
       >
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
               <AdminPanelSettingsIcon color="primary" sx={{ fontSize: 28 }} />
               <Typography variant="h5" sx={{ fontWeight: 800 }}>
                 🔑 Super Admin 시스템 회원 관리 대시보드
