@@ -125,7 +125,7 @@ export default function AdminUsersDashboardPage() {
           borderColor: '#334155',
         }}
       >
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={2}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
             <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
               <AdminPanelSettingsIcon color="primary" sx={{ fontSize: 28 }} />
@@ -218,7 +218,7 @@ export default function AdminUsersDashboardPage() {
 
       {/* Main Users Table */}
       <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, p: 3 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={2} sx={{ mb: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h6" sx={{ fontWeight: 800 }}>
             👥 가입 회원 전체 목록 ({filteredUsers.length}명)
           </Typography>
