@@ -1,7 +1,13 @@
 import { google } from 'googleapis';
 import { prisma } from '@/lib/prisma';
 
-export const GOOGLE_SCOPES = [
+export const GOOGLE_LOGIN_SCOPES = [
+  'openid',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+];
+
+export const GOOGLE_FULL_SCOPES = [
   'openid',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
