@@ -23,7 +23,7 @@ export async function GET(request: Request) {
             projects: true,
             schedules: true,
             tasks: true,
-            budgets: true,
+            projectBudgets: true,
           },
         },
       },
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
         projectsCount: u._count.projects,
         schedulesCount: u._count.schedules,
         tasksCount: u._count.tasks,
-        budgetsCount: u._count.budgets,
+        budgetsCount: u._count.projectBudgets,
       },
     }));
 
