@@ -10,11 +10,10 @@ export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/tasks',
 ];
 
-export const getGoogleOAuth2Client = () => {
+export const getGoogleOAuth2Client = (reqOrigin?: string) => {
   const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
-  const redirectUri = process.env.NEXT_PUBLIC_APP_URL
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`
-    : 'http://localhost:3000/api/auth/google/callback';
+  const baseUrl = reqOrigin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/auth/google/callback`;
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     throw new Error('Google client ID or secret not configured');
@@ -38,19 +37,8 @@ export const getAuthenticatedGoogleClient = async (userId: string) => {
   const oAuth2Client = getGoogleOAuth2Client();
   oAuth2Client.setCredentials({
     access_token: user.googleAccessToken,
-    refresh_token: user.googleRefreshToken,
-    expiry_date: user.googleTokenExpiry ? user.googleTokenExpiry.getTime() : null,
-  });
-
-  oAuth2Client.on('tokens', async (tokens) => {
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        googleAccessToken: tokens.access_token ?? user.googleAccessToken,
-        ...(tokens.refresh_token ? { googleRefreshToken: tokens.refresh_token } : {}),
-        googleTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : user.googleTokenExpiry,
-      },
-    });
+    refresh_token: user.googleRefreshToken || undefined,
+    expiry_date: user.googleTokenExpiry ? user.googleTokenExpiry.getTime() : undefined,
   });
 
   return oAuth2Client;

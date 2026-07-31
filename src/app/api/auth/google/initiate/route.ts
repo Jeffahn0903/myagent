@@ -6,11 +6,15 @@ export async function GET(request: Request) {
   const userId = getUserIdFromRequest(request);
   const state = userId || 'sso';
 
-  const oAuth2Client = getGoogleOAuth2Client();
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+  const proto = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+  const origin = host ? `${proto}://${host}` : undefined;
+
+  const oAuth2Client = getGoogleOAuth2Client(origin);
 
   const url = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
-    prompt: 'select_account consent', // Always show account picker & consent
+    prompt: 'select_account consent',
     scope: GOOGLE_SCOPES,
     state,
   });

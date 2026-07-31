@@ -14,7 +14,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    const oAuth2Client = getGoogleOAuth2Client();
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+    const proto = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+    const origin = host ? `${proto}://${host}` : undefined;
+
+    const oAuth2Client = getGoogleOAuth2Client(origin);
     const { tokens } = await oAuth2Client.getToken(code);
     oAuth2Client.setCredentials(tokens);
 
@@ -40,45 +44,56 @@ export async function GET(request: Request) {
           googleTokenExpiry: expiry_date ? new Date(expiry_date) : null,
         },
       });
-    } else {
-      // SSO Login or Auto-Register
-      user = await prisma.user.findUnique({
-        where: { email: googleUser.email },
-      });
-
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            email: googleUser.email,
-            name: googleUser.name || googleUser.email.split('@')[0],
-            password: '', // SSO user without password
-            googleAccessToken: access_token,
-            googleRefreshToken: refresh_token,
-            googleTokenExpiry: expiry_date ? new Date(expiry_date) : null,
-          },
-        });
-      } else {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            googleAccessToken: access_token,
-            ...(refresh_token ? { googleRefreshToken: refresh_token } : {}),
-            googleTokenExpiry: expiry_date ? new Date(expiry_date) : null,
-          },
-        });
-      }
+      return NextResponse.redirect(new URL('/dashboard/settings?connected=true', request.url));
     }
 
-    // Generate App JWT Token
+    // Find existing user by email or create new user (Public Registration via Google SSO)
+    user = await prisma.user.findUnique({
+      where: { email: googleUser.email },
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: googleUser.email,
+          name: googleUser.name || googleUser.email.split('@')[0],
+          password: '',
+          googleAccessToken: access_token,
+          googleRefreshToken: refresh_token,
+          googleTokenExpiry: expiry_date ? new Date(expiry_date) : null,
+        },
+      });
+    } else {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleAccessToken: access_token || user.googleAccessToken,
+          googleRefreshToken: refresh_token || user.googleRefreshToken,
+          googleTokenExpiry: expiry_date ? new Date(expiry_date) : user.googleTokenExpiry,
+        },
+      });
+    }
+
+    // Issue JWT cookie and redirect to dashboard
+    const secret = process.env.JWT_SECRET || 'fallback-secret-key-change-in-prod';
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '1d' }
+      { userId: user.id, email: user.email, name: user.name },
+      secret,
+      { expiresIn: '7d' }
     );
 
-    return NextResponse.redirect(new URL(`/auth/callback?token=${token}`, request.url));
-  } catch (error) {
+    const response = NextResponse.redirect(new URL('/dashboard', request.url));
+    response.cookies.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/',
+    });
+
+    return response;
+  } catch (error: any) {
     console.error('Google OAuth callback error:', error);
-    return NextResponse.redirect(new URL('/login?error=google_auth_failed', request.url));
+    return NextResponse.redirect(new URL('/login?error=google_callback_error', request.url));
   }
 }
