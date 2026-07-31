@@ -267,7 +267,7 @@ export default function AdminUsersDashboardPage() {
                 filteredUsers.map((u) => (
                   <TableRow key={u.id} hover>
                     <TableCell>
-                      <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                         <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36, fontSize: 14, fontWeight: 700 }}>
                           {u.name ? u.name[0] : 'U'}
                         </Avatar>
