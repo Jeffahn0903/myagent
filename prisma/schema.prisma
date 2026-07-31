@@ -220,9 +220,10 @@ model MeetingRoom {
   projectId     String?
   host          User              @relation(fields: [hostId], references: [id], onDelete: Cascade)
   hostId        String
-  attendees     MeetingAttendee[]
-  messages      ChatMessage[]
-  createdAt     DateTime          @default(now())
+  attendees      MeetingAttendee[]
+  messages       ChatMessage[]
+  summaryHistory MeetingSummaryHistory[]
+  createdAt      DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 }
 
@@ -248,6 +249,19 @@ model ChatMessage {
   meetingRoomId String
   createdAt     DateTime    @default(now())
 }
+
+model MeetingSummaryHistory {
+  id              String      @id @default(cuid())
+  meetingRoom     MeetingRoom @relation(fields: [meetingRoomId], references: [id], onDelete: Cascade)
+  meetingRoomId   String
+  title           String
+  summaryMarkdown String
+  schedulesJson   String?     // Stored JSON string of created schedules
+  tasksJson       String?     // Stored JSON string of created tasks
+  version         Int         @default(1)
+  createdAt       DateTime    @default(now())
+}
+
 
 
 

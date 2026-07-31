@@ -44,6 +44,7 @@ export async function POST(
     }
 
     // 1. Create Schedules in DB
+    const createdSchedules: Array<{ id: string; title: string; startTime: string }> = [];
     let createdScheduleCount = 0;
     if (Array.isArray(schedules) && schedules.length > 0) {
       for (const s of schedules) {
@@ -51,7 +52,7 @@ export async function POST(
         const start = s.startTime ? new Date(s.startTime) : new Date();
         const end = s.endTime ? new Date(s.endTime) : new Date(start.getTime() + 3600000);
 
-        await prisma.schedule.create({
+        const newSch = await prisma.schedule.create({
           data: {
             title: `[회의 후속] ${s.title}`,
             content: `회의 [${room.title}]에서 자동 생성된 후속 일정입니다.`,
@@ -62,18 +63,20 @@ export async function POST(
             projectId: room.projectId || undefined,
           },
         });
+        createdSchedules.push({ id: newSch.id, title: newSch.title, startTime: start.toISOString() });
         createdScheduleCount++;
       }
     }
 
     // 2. Create Tasks in DB
+    const createdTasks: Array<{ id: string; title: string; dueDate?: string }> = [];
     let createdTaskCount = 0;
     if (Array.isArray(tasks) && tasks.length > 0) {
       for (const t of tasks) {
         if (!t.title) continue;
         const due = t.dueDate ? new Date(t.dueDate) : undefined;
 
-        await prisma.task.create({
+        const newTsk = await prisma.task.create({
           data: {
             title: `[회의 후속] ${t.title}`,
             isCompleted: false,
@@ -82,12 +85,29 @@ export async function POST(
             projectId: room.projectId || undefined,
           },
         });
+        createdTasks.push({ id: newTsk.id, title: newTsk.title, dueDate: t.dueDate });
         createdTaskCount++;
       }
     }
 
-    // 3. Post System AI Chat Message into Meeting Room
-    const systemNotice = `🤖 [AI 회의록 확정 알림]\n회의록 및 요약 작성이 완료되었습니다.\n- 🗓️ 후속 일정: ${createdScheduleCount}건 등록\n- ✅ 후속 타스크: ${createdTaskCount}건 등록`;
+    // 3. PERSIST HISTORY IN DB
+    const existingHistoriesCount = await prisma.meetingSummaryHistory.count({
+      where: { meetingRoomId: id },
+    });
+
+    const historyRecord = await prisma.meetingSummaryHistory.create({
+      data: {
+        meetingRoomId: id,
+        title: room.title,
+        summaryMarkdown: summaryMarkdown || '회의 요약 작성 완료',
+        schedulesJson: JSON.stringify(createdSchedules),
+        tasksJson: JSON.stringify(createdTasks),
+        version: existingHistoriesCount + 1,
+      },
+    });
+
+    // 4. Post System AI Chat Message into Meeting Room
+    const systemNotice = `🤖 [AI 회의록 확정 알림 - v${historyRecord.version}]\n회의록 및 요약 작성이 완료되었습니다.\n- 🗓️ 후속 일정: ${createdScheduleCount}건 등록\n- ✅ 후속 타스크: ${createdTaskCount}건 등록`;
 
     await prisma.chatMessage.create({
       data: {
@@ -102,7 +122,7 @@ export async function POST(
       userId,
       action: 'UPDATE',
       entityType: 'SCHEDULE',
-      title: `[회의록 확정] ${room.title}`,
+      title: `[회의록 확정 v${historyRecord.version}] ${room.title}`,
       details: `일정 ${createdScheduleCount}건, 타스크 ${createdTaskCount}건 일괄 생성 완료`,
       targetUrl: `/dashboard/meetings/${id}`,
     });
@@ -111,6 +131,8 @@ export async function POST(
       success: true,
       createdScheduleCount,
       createdTaskCount,
+      historyId: historyRecord.id,
+      version: historyRecord.version,
     });
   } catch (error: any) {
     console.error('Error finalizing meeting minutes:', error);
