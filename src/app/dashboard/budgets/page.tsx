@@ -169,7 +169,7 @@ function renderFormattedInlineText(text: string) {
 }
 
 export default function BudgetsPage() {
-  const { token, loading: authLoading } = useAuth();
+  const { token, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<'PROJECTS' | 'TIMELINE' | 'AI_FORECAST'>('PROJECTS');

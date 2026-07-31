@@ -64,7 +64,7 @@ interface MeetingRoom {
 }
 
 export default function MeetingsDashboardPage() {
-  const { token, loading: authLoading } = useAuth();
+  const { token, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [rooms, setRooms] = useState<MeetingRoom[]>([]);
