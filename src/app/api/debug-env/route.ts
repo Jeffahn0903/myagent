@@ -1,61 +1,28 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@libsql/client';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const rawUrl = process.env.TURSO_DATABASE_URL ?? '';
-  const authToken = process.env.TURSO_AUTH_TOKEN;
+  const url = process.env.TURSO_DATABASE_URL ?? '';
+  const authToken = process.env.TURSO_AUTH_TOKEN ?? '';
 
-  // Convert libsql:// -> https:// for HTTP-mode connection
-  const httpUrl = rawUrl.replace(/^libsql:\/\//, 'https://');
+  let result = '';
 
-  let libsqlResult = 'not tested';
-  let adapterResult = 'not tested';
-  let prismaResult = 'not tested';
-
-  // Test 1: direct libsql client with original URL
   try {
-    const { createClient } = await import('@libsql/client');
-    const client = createClient({ url: rawUrl, authToken });
+    const client = createClient({ url, authToken });
     const r = await client.execute('SELECT 1 as ok');
-    libsqlResult = `OK (libsql://) - ${JSON.stringify(r.rows[0])}`;
+    result = `SUCCESS: ${JSON.stringify(r.rows[0])}`;
+    client.close();
   } catch (e: any) {
-    // Test with https://
-    try {
-      const { createClient } = await import('@libsql/client');
-      const client = createClient({ url: httpUrl, authToken });
-      const r = await client.execute('SELECT 1 as ok');
-      libsqlResult = `OK (https://) - ${JSON.stringify(r.rows[0])}`;
-    } catch (e2: any) {
-      libsqlResult = `FAIL libsql: ${e.message} | FAIL https: ${e2.message}`;
-    }
-  }
-
-  // Test 2: PrismaLibSql with https:// url
-  try {
-    const { PrismaLibSql } = await import('@prisma/adapter-libsql');
-    const adapter = new PrismaLibSql({ url: httpUrl, authToken });
-    adapterResult = `OK provider: ${adapter.provider}`;
-
-    try {
-      const { PrismaClient } = await import('@prisma/client');
-      const client = new PrismaClient({ adapter });
-      const count = await client.user.count();
-      prismaResult = `OK count: ${count}`;
-      await client.$disconnect();
-    } catch (e: any) {
-      prismaResult = `FAIL: ${e.message}`;
-    }
-  } catch (e: any) {
-    adapterResult = `FAIL: ${e.message}`;
+    result = `FAIL: ${e.message} | stack: ${e.stack?.slice(0, 200)}`;
   }
 
   return NextResponse.json({
-    rawUrl: rawUrl ? rawUrl.slice(0, 40) + '...' : 'MISSING',
-    httpUrl: httpUrl ? httpUrl.slice(0, 40) + '...' : 'MISSING',
-    authToken: authToken ? `len:${authToken.length}` : 'MISSING',
-    libsqlResult,
-    adapterResult,
-    prismaResult,
+    url: url ? url.slice(0, 50) : 'MISSING',
+    authTokenFirst20: authToken ? authToken.slice(0, 20) : 'MISSING',
+    authTokenLast10: authToken ? authToken.slice(-10) : 'MISSING',
+    authTokenLen: authToken.length,
+    result,
   });
 }
