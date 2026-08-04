@@ -20,11 +20,18 @@ export const getGoogleOAuth2Client = (reqHost?: string) => {
   const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID?.trim() || '';
   const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET?.trim() || '';
 
-  // Align with Vercel Primary Production Domain (www.mostlyon.com)
-  let baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.mostlyon.com';
-  if (reqHost) {
-    const proto = reqHost.includes('localhost') ? 'http' : 'https';
-    baseUrl = `${proto}://${reqHost}`;
+  // Always use www.mostlyon.com as the canonical redirect URI in production
+  // to match the single URI registered in Google Cloud Console
+  let baseUrl: string;
+  if (reqHost && reqHost.includes('localhost')) {
+    baseUrl = `http://${reqHost}`;
+  } else {
+    // Force canonical www domain for all production deployments
+    baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.mostlyon.com';
+    // Ensure www prefix
+    if (baseUrl === 'https://mostlyon.com') {
+      baseUrl = 'https://www.mostlyon.com';
+    }
   }
 
   const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/auth/google/callback`;
